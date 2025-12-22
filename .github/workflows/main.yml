@@ -1,24 +1,6 @@
 on:
   workflow_dispatch:
-    inputs:
-      save_data_in_github_cache:
-        required: true
-        type: boolean
-        default: false
-      data_cache_prefix:
-        required: true
-        type: string
-        default: track_data
-  workflow_call:
-    inputs:
-      save_data_in_github_cache:
-        required: true
-        type: boolean
-        default: false
-      data_cache_prefix:
-        required: true
-        type: string
-        default: track_data
+  
   push:
     branches: [ main ]  # 如果你的主分支叫 master，请改成 master
 
