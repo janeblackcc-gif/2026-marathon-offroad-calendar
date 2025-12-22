@@ -1,13 +1,27 @@
+name: Deploy to GitHub Pages
+
 on:
-  workflow_dispatch:
-  
   push:
-    branches: [ main ]  # 如果你的主分支叫 master，请改成 master
+    branches: [ main ] # 确保这与你的主分支名一致
+  workflow_dispatch:   # 允许你在 Actions 界面点击按钮手动重新部署
+
+# 必须包含权限声明，否则部署会失败
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 确保同一时间只有一个部署任务运行
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
   deploy:
-      id-token: write
-
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -16,15 +30,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+
       - name: Install dependencies
         run: npm ci
 
       - name: Build project
         run: npm run build
-        env:
-          # 如果你有 .env.local 中的 GEMINI_API_KEY，在部署时可能不需要（前端已内联）
-          # 若确实需要，可在 GitHub Secrets 中设置并在此引用
-          # GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v5
@@ -35,4 +47,5 @@ jobs:
           path: ./dist
 
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
