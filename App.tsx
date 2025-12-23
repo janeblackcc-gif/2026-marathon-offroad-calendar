@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { RAW_EVENTS, groupEventsByDate, sortDates } from './constants';
 import { EventCard } from './components/EventCard';
+import { EventDetailModal } from './components/EventDetailModal';
 import { MarathonEvent } from './types';
 
 const MONTHS = ['全部', '1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '待定'];
@@ -11,6 +12,7 @@ const App: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedMonth, setSelectedMonth] = useState<string>('全部');
   const [selectedDate, setSelectedDate] = useState<string>(''); // YYYY-MM-DD
+  const [selectedEvent, setSelectedEvent] = useState<MarathonEvent | null>(null);
 
   const filteredEvents = useMemo(() => {
     return RAW_EVENTS.filter(event => {
@@ -118,7 +120,7 @@ const App: React.FC = () => {
                   {!selectedDate && (
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center gap-2 text-slate-400 bg-slate-100 rounded-2xl group-focus-within:hidden">
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v12a2 2 0 002 2z" />
                       </svg>
                       <span>选择日期</span>
                     </div>
@@ -213,7 +215,11 @@ const App: React.FC = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {group.events.map((event) => (
-                      <EventCard key={event.id} event={event} />
+                      <EventCard 
+                        key={event.id} 
+                        event={event} 
+                        onClick={() => setSelectedEvent(event)} 
+                      />
                     ))}
                   </div>
                 </section>
@@ -272,6 +278,12 @@ const App: React.FC = () => {
           </div>
         </div>
       </footer>
+
+      {/* Detail Modal */}
+      <EventDetailModal 
+        event={selectedEvent} 
+        onClose={() => setSelectedEvent(null)} 
+      />
     </div>
   );
 };

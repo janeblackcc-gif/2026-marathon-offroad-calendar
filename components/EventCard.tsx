@@ -4,6 +4,7 @@ import { MarathonEvent, EventCategory } from '../types';
 
 interface EventCardProps {
   event: MarathonEvent;
+  onClick?: () => void;
 }
 
 const CategoryBadge: React.FC<{ category: EventCategory }> = ({ category }) => {
@@ -20,11 +21,14 @@ const CategoryBadge: React.FC<{ category: EventCategory }> = ({ category }) => {
   );
 };
 
-export const EventCard: React.FC<EventCardProps> = ({ event }) => {
+export const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
   const isFuzzyDate = !event.time.includes('日') && event.time !== '待定';
 
   return (
-    <div className="group bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-2xl hover:shadow-slate-200 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full">
+    <div 
+      onClick={onClick}
+      className="group bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-2xl hover:shadow-slate-200 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full cursor-pointer"
+    >
       <div className="flex justify-between items-start mb-4">
         <div className="flex flex-col">
           <span className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-1">
