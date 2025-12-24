@@ -68,7 +68,7 @@ export const ProvinceHeatmap: React.FC<ProvinceHeatmapProps> = ({
   useEffect(() => {
     if (cachedGeoData) return;
 
-    fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
+    fetch('/2026-marathon-offroad-calendar/china.json')
       .then(res => {
         if (!res.ok) throw new Error('Network response failed');
         return res.json();
