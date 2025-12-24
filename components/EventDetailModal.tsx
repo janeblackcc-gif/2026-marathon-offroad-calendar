@@ -1,7 +1,8 @@
-
 import React, { useEffect, useState } from 'react';
 import { RaceEvent, isTrailEvent } from '../types';
-import { GoogleGenAI } from "@google/genai";
+
+// 移除 Google 官方 SDK，改用原生 fetch
+// import { GoogleGenAI } from "@google/genai"; 
 
 interface EventDetailModalProps {
   event: RaceEvent | null;
@@ -29,53 +30,75 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({ event, onClo
     return () => { document.body.style.overflow = 'unset'; };
   }, [event]);
 
+  // --------------- 核心修改开始：适配中转 API ---------------
   const fetchMapLocation = async () => {
     if (!event) return;
     setLoadingMap(true);
+
     try {
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
-      
-      let locationConfig = {};
-      try {
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000 });
-        });
-        locationConfig = {
-          latLng: {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          }
-        };
-      } catch (e) {
-        console.debug("Location access denied or timed out, proceeding without latLng.");
+      // 1. 获取配置 (优先使用 .env 里的中转配置)
+      // 注意：请确保你的 .env 文件里变量名是 VITE_OPENAI_... 开头
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY; 
+      const baseUrl = import.meta.env.VITE_OPENAI_BASE_URL || "https://yinli.one/v1"; // 默认用你的中转地址
+      const model = import.meta.env.VITE_OPENAI_MODEL || "gemini-1.5-flash"; // 默认模型
+
+      if (!apiKey) {
+        throw new Error("API Key 未配置");
       }
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: `请查找位于${event.province}的"${event.name}"具体的比赛起点、场馆位置或起跑区域信息。并请用中文描述其典型的赛道特点或起点环境。`,
-        config: {
-          tools: [{ googleMaps: {} }],
-          toolConfig: {
-            retrievalConfig: locationConfig
-          }
+      // 2. 构建提示词
+      const prompt = `请查找位于${event.province}的"${event.name}"具体的比赛起点、场馆位置或起跑区域信息。并请用中文描述其典型的赛道特点或起点环境。请以JSON格式返回，包含 title (地点名称) 和 description (描述) 两个字段。`;
+
+      // 3. 发送请求给中转商 (Yinli)
+      const response = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
         },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            { role: "user", content: prompt }
+          ],
+          response_format: { type: "json_object" } // 尝试强制 JSON 格式
+        })
       });
 
-      const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-      const mapChunk = groundingChunks?.find(chunk => chunk.maps);
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error?.message || "AI 请求失败");
+      }
+
+      const data = await response.json();
+      const content = data.choices[0]?.message?.content;
       
+      // 4. 解析结果
+      let aiResult = { title: "", description: "" };
+      try {
+        aiResult = JSON.parse(content);
+      } catch (e) {
+        // 如果返回的不是纯 JSON，做个简单兜底
+        aiResult = {
+            title: `${event.province} ${event.name}`,
+            description: content || "已为您找到相关信息。"
+        };
+      }
+
+      // 5. 生成高德地图链接
       const amapBaseUri = "https://www.amap.com/search?query=";
-      const searchKeyword = mapChunk?.maps?.title || `${event.province} ${event.name} 起点`;
+      const searchKeyword = aiResult.title || `${event.province} ${event.name}`;
       const amapUri = `${amapBaseUri}${encodeURIComponent(searchKeyword)}`;
 
       setMapInfo({
         uri: amapUri,
-        title: mapChunk?.maps?.title || event.name,
-        description: response.text || "已找到赛事举办地点信息，点击可跳转高德地图查看。"
+        title: aiResult.title || event.name,
+        description: aiResult.description || "点击可跳转高德地图查看详情。"
       });
       
     } catch (error) {
       console.error("Map fetching failed:", error);
+      // 失败兜底
       const amapUri = `https://www.amap.com/search?query=${encodeURIComponent(event.province + " " + event.name)}`;
       setMapInfo({
         uri: amapUri,
@@ -86,6 +109,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({ event, onClo
       setLoadingMap(false);
     }
   };
+  // --------------- 核心修改结束 ---------------
 
   if (!event) return null;
 
@@ -183,12 +207,12 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({ event, onClo
                     <svg className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isTrail ? 'text-green-600' : 'text-red-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                     </svg>
-                    地点地图 (高德)
+                    地点地图 (AI + 高德)
                 </h3>
                 {loadingMap ? (
                   <div className="bg-slate-50 rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center border border-dashed border-slate-200 animate-pulse">
                     <div className={`w-6 h-6 sm:w-8 sm:h-8 border-4 border-t-transparent rounded-full animate-spin mb-3 ${isTrail ? 'border-green-500' : 'border-red-500'}`}></div>
-                    <p className="text-[10px] sm:text-xs font-bold text-slate-400 text-center">正在获取赛事地点信息...</p>
+                    <p className="text-[10px] sm:text-xs font-bold text-slate-400 text-center">正在请求 AI 分析赛道信息...</p>
                   </div>
                 ) : mapInfo ? (
                   <div className={`rounded-2xl p-4 sm:p-6 border ${isTrail ? 'bg-green-50/50 border-green-100' : 'bg-red-50/50 border-red-100'}`}>
