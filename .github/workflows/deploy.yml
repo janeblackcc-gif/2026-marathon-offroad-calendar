@@ -1,8 +1,12 @@
 name: Deploy to GitHub Pages
 
 on:
+  # 监听代码推送（自动挡）
   push:
-    branches: [ main ] # 如果你的主分支叫 master，这里就改 master
+    branches: [ main ]
+  
+  # 添加手动按钮（手动挡）
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -28,8 +32,7 @@ jobs:
       - name: Build 🏗️
         run: npm run build
         env:
-           # ⚠️ 注意：如果你的构建过程依赖 API KEY，这里可能需要配置
-           # 暂时先留空，看看能不能先跑通页面
+           # 忽略警告，强制构建成功
            CI: false 
 
       - name: Upload artifact 📤
