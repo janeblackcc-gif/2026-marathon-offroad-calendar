@@ -1,10 +1,10 @@
 
 import React, { useEffect, useState } from 'react';
-import { MarathonEvent } from '../types';
+import { RaceEvent, isTrailEvent } from '../types';
 import { GoogleGenAI } from "@google/genai";
 
 interface EventDetailModalProps {
-  event: MarathonEvent | null;
+  event: RaceEvent | null;
   onClose: () => void;
 }
 
@@ -33,7 +33,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({ event, onClo
     if (!event) return;
     setLoadingMap(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
       
       let locationConfig = {};
       try {
@@ -89,18 +89,20 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({ event, onClo
 
   if (!event) return null;
 
+  const isTrail = isTrailEvent(event);
+
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 lg:p-8">
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300" 
+      <div
+        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300"
         onClick={onClose}
       />
-      
+
       {/* Modal Content */}
       <div className="relative bg-white w-full max-w-2xl rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 flex flex-col h-[92vh] sm:max-h-[90vh]">
         {/* Decorative Header */}
-        <div className="h-28 sm:h-32 bg-red-600 relative overflow-hidden shrink-0">
+        <div className={`h-28 sm:h-32 relative overflow-hidden shrink-0 ${isTrail ? 'bg-green-600' : 'bg-red-600'}`}>
             <div className="absolute top-0 right-0 p-6 sm:p-8 opacity-10">
                 <svg className="w-32 h-32 sm:w-48 sm:h-48 rotate-12" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -130,7 +132,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({ event, onClo
                 <div className="bg-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-100">
                     <div className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">赛事级别</div>
                     <div className="text-slate-900 text-xs sm:text-sm font-black flex items-center gap-2">
-                        <span className={`w-1.5 h-1.5 rounded-full ${event.category === 'A' ? 'bg-red-500' : event.category === 'B' ? 'bg-blue-500' : 'bg-slate-500'}`}></span>
+                        <span className={`w-1.5 h-1.5 rounded-full ${event.category === 'A' ? isTrail ? 'bg-green-500' : 'bg-red-500' : event.category === 'B' ? 'bg-blue-500' : 'bg-slate-500'}`}></span>
                         {event.category}类认证
                     </div>
                 </div>
@@ -146,46 +148,73 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({ event, onClo
                     <div className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">举办省份</div>
                     <div className="text-slate-900 text-xs sm:text-sm font-black">{event.province}</div>
                 </div>
+                {isTrail && event.distanceOptions.length > 0 && (
+                  <>
+                    <div className="bg-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-100 col-span-2 lg:col-span-4">
+                        <div className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">距离选项</div>
+                        <div className="flex flex-wrap gap-2">
+                          {event.distanceOptions.map((option, idx) => (
+                            <div key={idx} className="bg-white border border-amber-100 rounded-lg px-3 py-2">
+                              <div className="text-xs font-black text-amber-700">{option.distance}</div>
+                              <div className="flex flex-wrap gap-2 mt-1 text-[10px] text-slate-600">
+                                {option.elevationGain && <span>↑{option.elevationGain}</span>}
+                                {option.itraPoints && <span className="text-green-600 font-bold">ITRA {option.itraPoints}</span>}
+                                {option.entryFee && <span>{option.entryFee}</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                    </div>
+                    <div className="bg-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-100">
+                        <div className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">报名时间</div>
+                        <div className="text-slate-900 text-xs sm:text-sm font-black">{event.registrationPeriod}</div>
+                    </div>
+                    <div className="bg-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-100">
+                        <div className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">参赛人数</div>
+                        <div className="text-slate-900 text-xs sm:text-sm font-black">{event.participantLimit}</div>
+                    </div>
+                  </>
+                )}
             </div>
 
             {/* Maps Integration Section */}
             <section>
                 <h3 className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3 sm:mb-4 flex items-center gap-2">
-                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isTrail ? 'text-green-600' : 'text-red-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                     </svg>
                     地点地图 (高德)
                 </h3>
                 {loadingMap ? (
                   <div className="bg-slate-50 rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center border border-dashed border-slate-200 animate-pulse">
-                    <div className="w-6 h-6 sm:w-8 sm:h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+                    <div className={`w-6 h-6 sm:w-8 sm:h-8 border-4 border-t-transparent rounded-full animate-spin mb-3 ${isTrail ? 'border-green-500' : 'border-red-500'}`}></div>
                     <p className="text-[10px] sm:text-xs font-bold text-slate-400 text-center">正在获取赛事地点信息...</p>
                   </div>
                 ) : mapInfo ? (
-                  <div className="bg-green-50/50 rounded-2xl p-4 sm:p-6 border border-green-100">
+                  <div className={`rounded-2xl p-4 sm:p-6 border ${isTrail ? 'bg-green-50/50 border-green-100' : 'bg-red-50/50 border-red-100'}`}>
                     <div className="flex flex-col gap-4">
                       <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
                         {mapInfo.description}
                       </p>
-                      <a 
-                        href={mapInfo.uri} 
-                        target="_blank" 
+                      <a
+                        href={mapInfo.uri}
+                        target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-between bg-white px-4 sm:px-5 py-3 sm:py-4 rounded-xl border border-green-200 hover:border-green-400 hover:shadow-md transition-all group"
+                        className={`flex items-center justify-between bg-white px-4 sm:px-5 py-3 sm:py-4 rounded-xl border transition-all group hover:shadow-md ${isTrail ? 'border-green-200 hover:border-green-400' : 'border-red-200 hover:border-red-400'}`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 text-green-600 rounded-lg flex items-center justify-center shrink-0">
+                          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center shrink-0 ${isTrail ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
                             <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[9px] sm:text-[10px] font-black text-green-600 uppercase tracking-wider">在高德地图中查看</p>
+                            <p className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wider ${isTrail ? 'text-green-600' : 'text-red-600'}`}>在高德地图中查看</p>
                             <p className="text-xs sm:text-sm font-bold text-slate-900 truncate">{mapInfo.title}</p>
                           </div>
                         </div>
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-hover:text-green-600 transform group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className={`w-4 h-4 sm:w-5 sm:h-5 text-slate-400 transform group-hover:translate-x-1 transition-all ${isTrail ? 'group-hover:text-green-600' : 'group-hover:text-red-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                         </svg>
                       </a>
@@ -202,7 +231,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({ event, onClo
             <div className="space-y-6">
                 <section>
                     <h3 className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3 sm:mb-4 flex items-center gap-2">
-                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isTrail ? 'text-green-500' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                         </svg>
                         主办/承办单位
@@ -216,16 +245,16 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({ event, onClo
 
                 <section>
                     <h3 className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-3 sm:mb-4 flex items-center gap-2">
-                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isTrail ? 'text-green-500' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         官方说明
                     </h3>
                     <div className="space-y-4">
                         <div className="flex gap-3 sm:gap-4">
-                            <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 shrink-0"></div>
+                            <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${isTrail ? 'bg-green-500' : 'bg-red-500'}`}></div>
                             <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
-                                该赛事属于 <strong className="text-slate-900 font-bold">{event.category}类赛事</strong>。{event.category === 'A' ? '赛事由中国田径协会共同主办或认证，其竞赛组织、赛道测量、裁判员选派和兴奋剂检查均符合田协标准，成绩可计入官方排名。' : '该赛事为地方性质赛事，具有较高的参与价值。'}
+                                该赛事属于 <strong className="text-slate-900 font-bold">{event.category}类赛事</strong>。{event.category === 'A' ? isTrail ? '赛事具有高水准的组织和竞赛标准，成绩可用于国际积分认证。' : '赛事由中国田径协会共同主办或认证，其竞赛组织、赛道测量、裁判员选派和兴奋剂检查均符合田协标准，成绩可计入官方排名。' : '该赛事为地方性质赛事，具有较高的参与价值。'}
                             </p>
                         </div>
                     </div>
@@ -234,7 +263,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({ event, onClo
 
             {/* Action Buttons */}
             <div className="pt-4 sm:pt-6 flex flex-col sm:flex-row gap-3 sm:gap-4 shrink-0 pb-6">
-                <button className="flex-1 bg-red-600 text-white font-black py-4 sm:py-4 rounded-2xl shadow-xl shadow-red-100 hover:bg-red-700 transition-all active:scale-[0.98]">
+                <button className={`flex-1 text-white font-black py-4 sm:py-4 rounded-2xl shadow-xl transition-all active:scale-[0.98] ${isTrail ? 'bg-green-600 shadow-green-100 hover:bg-green-700' : 'bg-red-600 shadow-red-100 hover:bg-red-700'}`}>
                     关注报名信息
                 </button>
                 <button className="flex-1 bg-slate-100 text-slate-900 font-black py-4 sm:py-4 rounded-2xl hover:bg-slate-200 transition-all" onClick={onClose}>
